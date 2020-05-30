@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Client.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Mmocore async 3.1.0</a> &gt; <a href="index.source.html" class="el_package">io.github.andyalvarezdev.mmocore</a> &gt; <span class="el_source">Client.java</span></div><h1>Client.java</h1><pre class="source lang-java linenums">package io.github.andyalvarezdev.mmocore;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Arrays;
+import java.util.Queue;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import static java.util.Objects.isNull;
+import static java.util.Objects.nonNull;
+
+public abstract class Client&lt;T extends Connection&lt;?&gt;&gt; {
+
+<span class="fc" id="L17">    private static final Logger LOGGER = LoggerFactory.getLogger(Client.class);</span>
+
+    static final int HEADER_SIZE = 2;
+
+    private final T connection;
+<span class="fc" id="L22">    private final Queue&lt;WritablePacket&lt;? extends Client&lt;T&gt;&gt;&gt; packetsToWrite = new ConcurrentLinkedQueue&lt;&gt;();</span>
+<span class="fc" id="L23">    private final AtomicBoolean writing = new AtomicBoolean(false);</span>
+    private int dataSentSize;
+    private volatile boolean isClosing;
+    private ResourcePool resourcePool;
+
+    /**
+     * Construct a new Client
+     *
+     * @param connection - The Connection to the client.
+     * @throws IllegalArgumentException if the connection is null or closed.
+     */
+<span class="fc" id="L34">    public Client(T connection) {</span>
+<span class="fc bfc" id="L35" title="All 4 branches covered.">        if(isNull(connection) || !connection.isOpen()) {</span>
+<span class="fc" id="L36">            throw new IllegalArgumentException(&quot;The Connection is null or closed&quot;);</span>
+        }
+<span class="fc" id="L38">        this.connection = connection;</span>
+<span class="fc" id="L39">    }</span>
+
+    T getConnection() {
+<span class="fc" id="L42">        return connection;</span>
+    }
+
+    /**
+     * Sends a packet to this client.
+     *
+     * If another packet is been sent to this client, the actual packet is put on a queue to be sent after all previous packets.
+     * Otherwise the packet is sent immediately.
+     *
+     * @param packet to be sent.
+     */
+    protected final void writePacket(WritablePacket&lt;? extends Client&lt;T&gt;&gt; packet) {
+<span class="pc bpc" id="L54" title="1 of 4 branches missed.">        if(!isConnected() || isNull(packet)) {</span>
+<span class="fc" id="L55">            return;</span>
+        }
+<span class="fc" id="L57">        packetsToWrite.add(packet);</span>
+<span class="fc" id="L58">        CompletableFuture.runAsync(this::tryWriteNextPacket);</span>
+<span class="fc" id="L59">    }</span>
+
+    private void tryWriteNextPacket() {
+<span class="fc" id="L62">        LOGGER.debug(&quot;Trying to send next packet&quot;);</span>
+<span class="fc bfc" id="L63" title="All 2 branches covered.">        if(writing.compareAndSet(false, true)) {</span>
+<span class="fc bfc" id="L64" title="All 2 branches covered.">            if(packetsToWrite.isEmpty()) {</span>
+<span class="fc" id="L65">                connection.releaseWritingBuffer();</span>
+<span class="fc" id="L66">                writing.set(false);</span>
+<span class="fc" id="L67">                LOGGER.debug(&quot;no packet found&quot;);</span>
+<span class="fc bfc" id="L68" title="All 2 branches covered.">                if(isClosing) {</span>
+<span class="fc" id="L69">                    disconnect();</span>
+                }
+            } else {
+<span class="fc" id="L72">                write(packetsToWrite.poll());</span>
+            }
+        }
+<span class="fc" id="L75">    }</span>
+
+    @SuppressWarnings({&quot;unchecked&quot;, &quot;rawtypes&quot;})
+    private void write(WritablePacket packet) {
+        try {
+<span class="fc" id="L80">            int dataSize = packet.writeData(this);</span>
+
+<span class="fc bfc" id="L82" title="All 2 branches covered.">            if(dataSize &lt;= 0) {</span>
+<span class="fc" id="L83">                finishWriting();</span>
+<span class="fc" id="L84">                return;</span>
+            }
+
+<span class="fc" id="L87">            var payloadSize = dataSize - HEADER_SIZE;</span>
+<span class="fc" id="L88">            dataSentSize = encryptedSize(payloadSize) + HEADER_SIZE;</span>
+
+<span class="fc bfc" id="L90" title="All 2 branches covered.">            if(dataSentSize &lt;= HEADER_SIZE) {</span>
+<span class="fc" id="L91">                finishWriting();</span>
+<span class="fc" id="L92">                return;</span>
+            }
+
+<span class="fc" id="L95">            encryptAndWrite(packet, payloadSize);</span>
+<span class="fc" id="L96">        } catch (Exception e) {</span>
+<span class="fc" id="L97">            LOGGER.error(e.getMessage(), e);</span>
+<span class="fc" id="L98">            finishWriting();</span>
+        } finally {
+<span class="fc" id="L100">            packet.releaseData();</span>
+        }
+<span class="fc" id="L102">    }</span>
+
+    private void encryptAndWrite(WritablePacket&lt;? extends Client&lt;T&gt;&gt; packet, int payloadSize) {
+<span class="fc" id="L105">        var buffer = packet.buffer();</span>
+<span class="fc bfc" id="L106" title="All 2 branches covered.">        if(dataSentSize &gt; buffer.data.length) {</span>
+<span class="fc" id="L107">            buffer.data = Arrays.copyOf(buffer.data, dataSentSize);</span>
+        }
+<span class="fc" id="L109">        buffer.data = encrypt(buffer.data, HEADER_SIZE, payloadSize);</span>
+<span class="fc" id="L110">        packet.writeHeaderAndRecord(dataSentSize);</span>
+<span class="fc" id="L111">        connection.write(buffer.data, dataSentSize);</span>
+<span class="fc" id="L112">        LOGGER.debug(&quot;Sending packet {} to {}&quot;, packet, this);</span>
+<span class="fc" id="L113">    }</span>
+
+    /**
+     * close the underlying Connection to the client.
+     *
+     * All pending packets are cancelled.
+     *
+     */
+    public void close() {
+<span class="fc" id="L122">        close(null);</span>
+<span class="fc" id="L123">    }</span>
+
+    /**
+     * Sends the packet and close the underlying Connection to the client.
+     *
+     * All others pending packets are cancelled.
+     *
+     * @param packet to be sent before the connection is closed.
+     */
+    public void close(WritablePacket&lt;? extends Client&lt;T&gt;&gt; packet) {
+<span class="fc bfc" id="L133" title="All 2 branches covered.">        if(!isConnected()) {</span>
+<span class="fc" id="L134">            return;</span>
+        }
+<span class="fc" id="L136">        packetsToWrite.clear();</span>
+<span class="fc bfc" id="L137" title="All 2 branches covered.">        if(nonNull(packet)) {</span>
+<span class="fc" id="L138">            packetsToWrite.add(packet);</span>
+        }
+<span class="fc" id="L140">        isClosing = true;</span>
+<span class="fc" id="L141">        LOGGER.debug(&quot;Closing client connection {} with packet {}&quot;, this, packet);</span>
+<span class="fc" id="L142">        tryWriteNextPacket();</span>
+<span class="fc" id="L143">    }</span>
+
+    void resumeSend(int result) {
+<span class="nc" id="L146">        dataSentSize-= result;</span>
+<span class="nc" id="L147">        connection.write();</span>
+<span class="nc" id="L148">    }</span>
+
+    void finishWriting() {
+<span class="fc" id="L151">        writing.set(false);</span>
+<span class="fc" id="L152">        tryWriteNextPacket();</span>
+<span class="fc" id="L153">    }</span>
+
+    final void disconnect() {
+<span class="fc" id="L156">        LOGGER.debug(&quot;Client {} disconnecting&quot;, this);</span>
+<span class="fc" id="L157">        onDisconnection();</span>
+        try {
+            // Give a time to send last packet
+<span class="fc" id="L160">            Thread.sleep(2000);</span>
+<span class="nc" id="L161">        } catch (InterruptedException ignored) {</span>
+            // ignore
+<span class="fc" id="L163">        }</span>
+<span class="fc" id="L164">        connection.close();</span>
+<span class="fc" id="L165">    }</span>
+
+    int getDataSentSize() {
+<span class="fc" id="L168">        return dataSentSize;</span>
+    }
+
+    /**
+     * @return The client's IP address.
+     */
+    public String getHostAddress() {
+<span class="fc" id="L175">        return connection.getRemoteAddress();</span>
+    }
+
+    /**
+     * @return if client still connected
+     */
+    public boolean isConnected() {
+<span class="fc bfc" id="L182" title="All 4 branches covered.">        return connection.isOpen() &amp;&amp; !isClosing;</span>
+    }
+
+    void setResourcePool(ResourcePool resourcePool) {
+<span class="fc" id="L186">        this.resourcePool = resourcePool;</span>
+<span class="fc" id="L187">    }</span>
+
+    ResourcePool getResourcePool() {
+<span class="fc" id="L190">        return resourcePool;</span>
+    }
+
+    /**
+     * @param dataSize the data size to be encrypted
+     *
+     * @return the size of the data after encrypted
+     */
+    public abstract int encryptedSize(int dataSize);
+
+    /**
+     * Encrypt the data in-place.
+     *
+     * @param data - the data to be encrypted
+     * @param offset - the initial index to be encrypted
+     * @param size - the length of data to be encrypted
+     *
+     * @return The data after encrypted
+     */
+    public abstract byte[] encrypt(byte[] data, int offset, int size);
+
+    /**
+     * Decrypt the data in-place
+     *
+     * @param data - data to be decrypted
+     * @param offset - the initial index to be encrypted.
+     * @param size - the length of data to be encrypted.
+     *
+     * @return if the data was decrypted.
+     */
+    public abstract boolean decrypt(byte[] data, int offset, int size);
+
+    /**
+     * Handles the client's disconnection.
+     *
+     * This method must save all data and release all resources related to the client.
+     *
+     * No more packet can be sent after this method is called.
+     */
+    protected abstract void  onDisconnection();
+
+    /**
+     * Handles the client's connection.
+     * This method should not use blocking operations.
+     *
+     * The Packets can be sent only after this method is called.
+     */
+    public abstract void onConnected();
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.5.201910111838</span></div></body></html>

@@ -1,0 +1,8 @@
+Manifest-Version: 1.0
+Built-By: maico
+Build-Timestamp: 2020-05-30T20:52:45.918-0300
+Build-Revision: d5f9e1d
+Build-Version: 3.1.0-SNAPSHOT
+Build-Jdk: 11.0.7 (Oracle Corporation 11.0.7+8-LTS)
+Automatic-Module-Name: io.github.andyalvarezdev.mmocore
+

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.andyalvarezdev.mmocore.ConnectionTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2020-05-30T23:53:01" hostname="DESKTOP-PCBHA14" time="0.524">
+  <properties/>
+  <testcase name="testWriteBeforeClose" classname="io.github.andyalvarezdev.mmocore.ConnectionTest" time="0.21"/>
+  <testcase name="testIsOpenWithNoConnectedChannel" classname="io.github.andyalvarezdev.mmocore.ConnectionTest" time="0.0"/>
+  <testcase name="testIncreaseWriterBuffer" classname="io.github.andyalvarezdev.mmocore.ConnectionTest" time="0.207"/>
+  <testcase name="testWriteWithClosedChannel" classname="io.github.andyalvarezdev.mmocore.ConnectionTest" time="0.0"/>
+  <testcase name="testRemoteAddressWithClosedChannel" classname="io.github.andyalvarezdev.mmocore.ConnectionTest" time="0.105"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

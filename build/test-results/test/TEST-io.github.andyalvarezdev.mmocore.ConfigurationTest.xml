@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.andyalvarezdev.mmocore.ConfigurationTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2020-05-30T23:52:57" hostname="DESKTOP-PCBHA14" time="0.008">
+  <properties/>
+  <testcase name="testCorrectConfigurations" classname="io.github.andyalvarezdev.mmocore.ConfigurationTest" time="0.004"/>
+  <testcase name="testWrongValuesConfigurations" classname="io.github.andyalvarezdev.mmocore.ConfigurationTest" time="0.002"/>
+  <testcase name="testNonExistentConfigurationFile" classname="io.github.andyalvarezdev.mmocore.ConfigurationTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

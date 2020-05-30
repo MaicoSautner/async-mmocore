@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ConnectionHandler.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Mmocore async 3.1.0</a> &gt; <a href="index.source.html" class="el_package">io.github.andyalvarezdev.mmocore</a> &gt; <span class="el_source">ConnectionHandler.java</span></div><h1>ConnectionHandler.java</h1><pre class="source lang-java linenums">package io.github.andyalvarezdev.mmocore;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.net.StandardSocketOptions;
+import java.nio.channels.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+
+import static java.lang.Runtime.getRuntime;
+import static java.util.Objects.nonNull;
+
+public final class ConnectionHandler&lt;T extends Client&lt;Connection&lt;T&gt;&gt;&gt; extends Thread {
+
+<span class="fc" id="L19">    private static final Logger LOGGER = LoggerFactory.getLogger(ConnectionHandler.class);</span>
+    private static final int CACHED_THREAD_POLL_THRESHOLD = 1000;
+
+    private final AsynchronousChannelGroup group;
+    private final AsynchronousServerSocketChannel listener;
+    private final ConnectionConfig&lt;T&gt; config;
+    private volatile boolean shutdown;
+    private final ResourcePool resourcePool;
+
+<span class="fc" id="L28">    ConnectionHandler(ConnectionConfig&lt;T&gt; config) throws IOException {</span>
+<span class="fc" id="L29">        this.config = config;</span>
+<span class="fc" id="L30">        resourcePool = ResourcePool.initialize(config);</span>
+<span class="fc" id="L31">        group = createChannelGroup(config.threadPoolSize);</span>
+<span class="fc" id="L32">        listener = group.provider().openAsynchronousServerSocketChannel(group);</span>
+<span class="fc" id="L33">        listener.setOption(StandardSocketOptions.SO_REUSEADDR, true);</span>
+<span class="fc" id="L34">        listener.bind(config.address);</span>
+<span class="fc" id="L35">    }</span>
+
+    private AsynchronousChannelGroup createChannelGroup(int threadPoolSize) throws IOException {
+<span class="pc bpc" id="L38" title="1 of 4 branches missed.">        if(threadPoolSize &lt;= 0 || threadPoolSize &gt;= CACHED_THREAD_POLL_THRESHOLD) {</span>
+<span class="fc" id="L39">            LOGGER.debug(&quot;Channel group is using CachedThreadPool&quot;);</span>
+<span class="fc" id="L40">            return AsynchronousChannelGroup.withCachedThreadPool(new ThreadPoolExecutor(0, Short.MAX_VALUE, 60L, TimeUnit.SECONDS, new SynchronousQueue&lt;&gt;()),</span>
+<span class="fc" id="L41">                    getRuntime().availableProcessors());</span>
+        }
+<span class="fc" id="L43">        LOGGER.debug(&quot;Channel group is using FixedThreadPool&quot;);</span>
+<span class="fc" id="L44">        return AsynchronousChannelGroup.withFixedThreadPool(threadPoolSize, Executors.defaultThreadFactory());</span>
+    }
+
+    /**
+     * Start to listen connections.
+     */
+    @Override
+    public void run() {
+<span class="fc" id="L52">        listener.accept(null, new AcceptConnectionHandler());</span>
+<span class="fc" id="L53">    }</span>
+
+    private void closeConnection() {
+        try {
+<span class="fc" id="L57">            listener.close();</span>
+<span class="fc" id="L58">            group.awaitTermination(config.shutdownWaitTime, TimeUnit.MILLISECONDS);</span>
+<span class="fc" id="L59">            group.shutdownNow();</span>
+<span class="nc" id="L60">        } catch (Exception e) {</span>
+<span class="nc" id="L61">            LOGGER.warn(e.getMessage(), e);</span>
+<span class="fc" id="L62">        }</span>
+<span class="fc" id="L63">    }</span>
+
+    /**
+     * Shutdown the connection listener, the thread pool and all associated resources.
+     *
+     * This method closes all established connections.
+     */
+    public void shutdown() {
+<span class="fc" id="L71">        LOGGER.debug(&quot;Shutting ConnectionHandler down&quot;);</span>
+<span class="fc" id="L72">        shutdown = true;</span>
+<span class="fc" id="L73">        closeConnection();</span>
+<span class="fc" id="L74">    }</span>
+
+<span class="fc" id="L76">    private class AcceptConnectionHandler implements CompletionHandler&lt;AsynchronousSocketChannel, Void&gt; {</span>
+        @Override
+        public void completed(AsynchronousSocketChannel clientChannel, Void attachment) {
+<span class="fc" id="L79">            tryAcceptNewConnection();</span>
+<span class="fc" id="L80">            acceptConnection(clientChannel);</span>
+<span class="fc" id="L81">        }</span>
+
+        private void tryAcceptNewConnection() {
+<span class="pc bpc" id="L84" title="2 of 4 branches missed.">            if(!shutdown &amp;&amp; listener.isOpen()) {</span>
+<span class="fc" id="L85">                listener.accept(null, this);</span>
+            }
+<span class="fc" id="L87">        }</span>
+
+        @Override
+        public void failed(Throwable t, Void attachment) {
+<span class="pc bpc" id="L91" title="1 of 2 branches missed.">            if(t instanceof ClosedChannelException) {</span>
+<span class="fc" id="L92">                LOGGER.debug(t.getMessage(), t);</span>
+            } else {
+<span class="nc" id="L94">                tryAcceptNewConnection();</span>
+<span class="nc" id="L95">                LOGGER.warn(t.getMessage(), t);</span>
+            }
+<span class="fc" id="L97">        }</span>
+
+        private void acceptConnection(AsynchronousSocketChannel channel) {
+<span class="pc bpc" id="L100" title="2 of 4 branches missed.">            if(nonNull(channel) &amp;&amp; channel.isOpen()) {</span>
+                try {
+<span class="fc" id="L102">                    LOGGER.debug(&quot;Accepting connection from {}&quot;, channel);</span>
+<span class="fc bfc" id="L103" title="All 4 branches covered.">                    if(nonNull(config.acceptFilter) &amp;&amp; !config.acceptFilter.accept(channel)) {</span>
+<span class="fc" id="L104">                        channel.close();</span>
+<span class="fc" id="L105">                        LOGGER.debug(&quot;Rejected connection&quot;);</span>
+<span class="fc" id="L106">                        return;</span>
+                    }
+
+<span class="pc bpc" id="L109" title="1 of 2 branches missed.">                    channel.setOption(StandardSocketOptions.TCP_NODELAY, !config.useNagle);</span>
+<span class="fc" id="L110">                    Connection&lt;T&gt; connection = new Connection&lt;&gt;(channel, config.readHandler, config.writeHandler);</span>
+<span class="fc" id="L111">                    T client = config.clientFactory.create(connection);</span>
+<span class="fc" id="L112">                    client.setResourcePool(resourcePool);</span>
+<span class="fc" id="L113">                    connection.setClient(client);</span>
+<span class="fc" id="L114">                    client.onConnected();</span>
+<span class="fc" id="L115">                    connection.read();</span>
+<span class="nc" id="L116">                } catch (ClosedChannelException e) {</span>
+<span class="nc" id="L117">                    LOGGER.debug(e.getMessage(), e);</span>
+<span class="fc" id="L118">                } catch (Exception  e) {</span>
+<span class="fc" id="L119">                    LOGGER.error(e.getMessage(), e);</span>
+                    try {
+<span class="fc" id="L121">                        channel.close();</span>
+<span class="nc" id="L122">                    } catch (IOException ie) {</span>
+<span class="nc" id="L123">                        LOGGER.warn(ie.getMessage(), ie);</span>
+<span class="fc" id="L124">                    }</span>
+<span class="pc" id="L125">                }</span>
+            }
+<span class="fc" id="L127">        }</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.5.201910111838</span></div></body></html>

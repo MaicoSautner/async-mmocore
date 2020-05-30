@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Connection.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Mmocore async 3.1.0</a> &gt; <a href="index.source.html" class="el_package">io.github.andyalvarezdev.mmocore</a> &gt; <span class="el_source">Connection.java</span></div><h1>Connection.java</h1><pre class="source lang-java linenums">package io.github.andyalvarezdev.mmocore;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
+import java.nio.channels.AsynchronousSocketChannel;
+
+import static java.util.Objects.isNull;
+import static java.util.Objects.nonNull;
+
+public class Connection&lt;T extends Client&lt;Connection&lt;T&gt;&gt;&gt; {
+
+<span class="fc" id="L16">    private static final Logger LOGGER = LoggerFactory.getLogger(Connection.class);</span>
+
+    private final AsynchronousSocketChannel channel;
+    private final ReadHandler&lt;T&gt; readHandler;
+    private final WriteHandler&lt;T&gt; writeHandler;
+    private T client;
+
+    private ByteBuffer readingBuffer;
+    private ByteBuffer writingBuffer;
+
+<span class="fc" id="L26">    Connection(AsynchronousSocketChannel channel, ReadHandler&lt;T&gt; readHandler, WriteHandler&lt;T&gt; writeHandler) {</span>
+<span class="fc" id="L27">        this.channel = channel;</span>
+<span class="fc" id="L28">        this.readHandler = readHandler;</span>
+<span class="fc" id="L29">        this.writeHandler = writeHandler;</span>
+<span class="fc" id="L30">    }</span>
+
+    void setClient(T client) {
+<span class="fc" id="L33">        this.client = client;</span>
+<span class="fc" id="L34">    }</span>
+
+    final void read() {
+<span class="pc bpc" id="L37" title="1 of 2 branches missed.">        if(channel.isOpen()) {</span>
+<span class="fc" id="L38">            channel.read(getReadingBuffer(), client, readHandler);</span>
+        }
+<span class="fc" id="L40">    }</span>
+
+    final void write(byte[] data, int size) {
+<span class="fc bfc" id="L43" title="All 2 branches covered.">        if(!channel.isOpen()) {</span>
+<span class="fc" id="L44">            return;</span>
+        }
+<span class="fc" id="L46">        ByteBuffer directBuffer = getDirectWritingBuffer(size);</span>
+<span class="fc" id="L47">        directBuffer.put(data, 0, size);</span>
+<span class="fc" id="L48">        directBuffer.flip();</span>
+<span class="fc" id="L49">        write();</span>
+<span class="fc" id="L50">    }</span>
+
+    final void write() {
+<span class="pc bpc" id="L53" title="2 of 4 branches missed.">        if(channel.isOpen() &amp;&amp; nonNull(writingBuffer)) {</span>
+<span class="fc" id="L54">            channel.write(writingBuffer, client, writeHandler);</span>
+        }
+<span class="fc" id="L56">    }</span>
+
+    ByteBuffer getReadingBuffer() {
+<span class="fc bfc" id="L59" title="All 2 branches covered.">        if(isNull(readingBuffer)) {</span>
+<span class="fc" id="L60">            readingBuffer = client.getResourcePool().getPooledDirectBuffer();</span>
+        }
+<span class="fc" id="L62">        return readingBuffer;</span>
+    }
+
+    private ByteBuffer getDirectWritingBuffer(int length) {
+<span class="fc bfc" id="L66" title="All 2 branches covered.">        if(isNull(writingBuffer)) {</span>
+<span class="fc" id="L67">            writingBuffer = client.getResourcePool().getPooledDirectBuffer(length);</span>
+<span class="fc bfc" id="L68" title="All 2 branches covered.">        } else if(writingBuffer.clear().limit() &lt; length) {</span>
+<span class="fc" id="L69">            releaseWritingBuffer();</span>
+<span class="fc" id="L70">            writingBuffer = client.getResourcePool().getPooledDirectBuffer(length);</span>
+        }
+<span class="fc" id="L72">        return writingBuffer;</span>
+    }
+
+    private void releaseReadingBuffer() {
+<span class="fc" id="L76">        client.getResourcePool().recycleBuffer(readingBuffer);</span>
+<span class="fc" id="L77">        readingBuffer=null;</span>
+<span class="fc" id="L78">    }</span>
+
+    void releaseWritingBuffer() {
+<span class="fc" id="L81">        client.getResourcePool().recycleBuffer(writingBuffer);</span>
+<span class="fc" id="L82">        writingBuffer = null;</span>
+<span class="fc" id="L83">    }</span>
+
+    void close() {
+<span class="fc" id="L86">        releaseReadingBuffer();</span>
+<span class="fc" id="L87">        releaseWritingBuffer();</span>
+        try {
+<span class="fc" id="L89">            channel.shutdownInput();</span>
+<span class="fc" id="L90">            channel.shutdownOutput();</span>
+<span class="fc" id="L91">            channel.close();</span>
+<span class="fc" id="L92">        } catch (IOException e) {</span>
+<span class="fc" id="L93">            LOGGER.warn(e.getMessage(), e);</span>
+<span class="fc" id="L94">        }</span>
+<span class="fc" id="L95">    }</span>
+
+    String getRemoteAddress() {
+        try {
+<span class="fc" id="L99">            InetSocketAddress address = (InetSocketAddress) channel.getRemoteAddress();</span>
+<span class="fc" id="L100">            return address.getAddress().getHostAddress();</span>
+<span class="fc" id="L101">        } catch (IOException e) {</span>
+<span class="fc" id="L102">            return &quot;&quot;;</span>
+        }
+    }
+
+    boolean isOpen() {
+        try {
+<span class="fc bfc" id="L108" title="All 4 branches covered.">            return channel.isOpen() &amp;&amp; nonNull(channel.getRemoteAddress());</span>
+<span class="nc" id="L109">        } catch (Exception e) {</span>
+<span class="nc" id="L110">            return false;</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.5.201910111838</span></div></body></html>

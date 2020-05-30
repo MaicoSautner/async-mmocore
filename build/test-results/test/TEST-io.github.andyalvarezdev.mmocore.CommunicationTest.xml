@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.andyalvarezdev.mmocore.CommunicationTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2020-05-30T23:52:54" hostname="DESKTOP-PCBHA14" time="2.575">
+  <properties/>
+  <testcase name="testIntegration" classname="io.github.andyalvarezdev.mmocore.CommunicationTest" time="2.575"/>
+  <system-out><![CDATA[Sending AsyncClientPingPacket
+Sending AsyncServerPongPacket
+Sending AsyncClientClosePacket
+Sending AsyncServerClosedConnection
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.andyalvarezdev.mmocore.ClientTest" tests="10" skipped="0" failures="0" errors="0" timestamp="2020-05-30T23:52:51" hostname="DESKTOP-PCBHA14" time="2.955">
+  <properties/>
+  <testcase name="testStaticPacket" classname="io.github.andyalvarezdev.mmocore.ClientTest" time="0.178"/>
+  <testcase name="testCloseAlreadyClosed" classname="io.github.andyalvarezdev.mmocore.ClientTest" time="0.119"/>
+  <testcase name="testEncriptationFailed" classname="io.github.andyalvarezdev.mmocore.ClientTest" time="0.115"/>
+  <testcase name="testEncryptedDataOverflow" classname="io.github.andyalvarezdev.mmocore.ClientTest" time="0.108"/>
+  <testcase name="testWriteWithException" classname="io.github.andyalvarezdev.mmocore.ClientTest" time="0.107"/>
+  <testcase name="testWriteNullPacket" classname="io.github.andyalvarezdev.mmocore.ClientTest" time="0.106"/>
+  <testcase name="testCloseWithNullPacket" classname="io.github.andyalvarezdev.mmocore.ClientTest" time="2.105"/>
+  <testcase name="testRemoteAddress" classname="io.github.andyalvarezdev.mmocore.ClientTest" time="0.105"/>
+  <testcase name="testClosedConnection" classname="io.github.andyalvarezdev.mmocore.ClientTest" time="0.002"/>
+  <testcase name="testNullInitialize" classname="io.github.andyalvarezdev.mmocore.ClientTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[SLF4J: No SLF4J providers were found.
+SLF4J: Defaulting to no-operation (NOP) logger implementation
+SLF4J: See http://www.slf4j.org/codes.html#noProviders for further details.
+]]></system-err>
+</testsuite>

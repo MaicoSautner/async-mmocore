@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.andyalvarezdev.mmocore.ConnectionHandlerTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2020-05-30T23:52:57" hostname="DESKTOP-PCBHA14" time="4.439">
+  <properties/>
+  <testcase name="testRefuseConnection" classname="io.github.andyalvarezdev.mmocore.ConnectionHandlerTest" time="2.118"/>
+  <testcase name="testCachedThreadPoolHandler" classname="io.github.andyalvarezdev.mmocore.ConnectionHandlerTest" time="0.208"/>
+  <testcase name="testNonAcceptedConnection" classname="io.github.andyalvarezdev.mmocore.ConnectionHandlerTest" time="2.112"/>
+  <system-out><![CDATA[Sending AsyncClientClosePacket
+Sending AsyncServerClosedConnection
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

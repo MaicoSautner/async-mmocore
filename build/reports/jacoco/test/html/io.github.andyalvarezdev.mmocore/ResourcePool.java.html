@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ResourcePool.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Mmocore async 3.1.0</a> &gt; <a href="index.source.html" class="el_package">io.github.andyalvarezdev.mmocore</a> &gt; <span class="el_source">ResourcePool.java</span></div><h1>ResourcePool.java</h1><pre class="source lang-java linenums">package io.github.andyalvarezdev.mmocore;
+
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
+
+import static java.util.Objects.isNull;
+import static java.util.Objects.nonNull;
+
+class ResourcePool {
+
+<span class="fc" id="L15">    private final Map&lt;Integer, Queue&lt;ByteBuffer&gt;&gt; buffers = new HashMap&lt;&gt;(4);</span>
+
+    private final ConnectionConfig&lt;?&gt; config;
+
+<span class="fc" id="L19">    private ResourcePool(ConnectionConfig&lt;?&gt; config) {</span>
+<span class="fc" id="L20">        this.config = config;</span>
+<span class="fc" id="L21">    }</span>
+
+    ByteBuffer getPooledDirectBuffer() {
+<span class="fc" id="L24">        return getSizedBuffer(config.bufferDefaultSize);</span>
+    }
+
+    ByteBuffer getPooledDirectBuffer(int size) {
+<span class="fc" id="L28">        return getSizedBuffer(determineBufferSize(size));</span>
+    }
+
+    private ByteBuffer getSizedBuffer(int size) {
+<span class="fc" id="L32">        Queue&lt;ByteBuffer&gt; queue = queueFromSize(size);</span>
+<span class="fc" id="L33">        ByteBuffer buffer = queue.poll();</span>
+<span class="pc bpc" id="L34" title="1 of 2 branches missed.">        if(isNull(buffer)) {</span>
+<span class="fc" id="L35">            return ByteBuffer.allocateDirect(size).order(ByteOrder.LITTLE_ENDIAN);</span>
+        }
+<span class="nc" id="L37">        return buffer;</span>
+    }
+
+    private Queue&lt;ByteBuffer&gt; queueFromSize(int size) {
+<span class="fc" id="L41">        Queue&lt;ByteBuffer&gt; queue =  buffers.get(size);</span>
+<span class="pc bpc" id="L42" title="1 of 2 branches missed.">        if(isNull(queue)) {</span>
+<span class="fc" id="L43">            queue = new ConcurrentLinkedQueue&lt;&gt;();</span>
+<span class="fc" id="L44">            buffers.put(size, queue);</span>
+        }
+<span class="fc" id="L46">        return queue;</span>
+    }
+
+    private int determineBufferSize(int size) {
+<span class="fc" id="L50">        int bufferSize = config.bufferDefaultSize;</span>
+<span class="fc bfc" id="L51" title="All 2 branches covered.">        if(size &lt;= config.bufferSmallSize) {</span>
+<span class="fc" id="L52">            bufferSize = config.bufferSmallSize;</span>
+<span class="fc bfc" id="L53" title="All 2 branches covered.">        } else if( size &lt;= config.bufferMediumSize) {</span>
+<span class="fc" id="L54">            bufferSize = config.bufferMediumSize;</span>
+<span class="pc bpc" id="L55" title="1 of 2 branches missed.">        } else if( size &lt;= config.bufferLargeSize) {</span>
+<span class="fc" id="L56">            bufferSize = config.bufferLargeSize;</span>
+        }
+<span class="fc" id="L58">        return bufferSize;</span>
+    }
+
+    void recycleBuffer(ByteBuffer buffer) {
+<span class="fc bfc" id="L62" title="All 2 branches covered.">        if (nonNull(buffer)) {</span>
+            Queue&lt;ByteBuffer&gt; queue;
+<span class="fc" id="L64">            int poolSize =  determinePoolSize(buffer.capacity());</span>
+<span class="fc" id="L65">            queue = buffers.get(buffer.capacity());</span>
+<span class="pc bpc" id="L66" title="2 of 4 branches missed.">            if (nonNull(queue) &amp;&amp; queue.size() &lt; poolSize) {</span>
+<span class="fc" id="L67">                buffer.clear();</span>
+<span class="fc" id="L68">                queue.add(buffer);</span>
+            }
+        }
+<span class="fc" id="L71">    }</span>
+
+    private int determinePoolSize(int size) {
+<span class="fc" id="L74">        int poolSize = config.bufferPoolSize;</span>
+<span class="fc bfc" id="L75" title="All 2 branches covered.">        if(size == config.bufferSmallSize) {</span>
+<span class="fc" id="L76">            poolSize = config.bufferSmallPoolSize;</span>
+<span class="fc bfc" id="L77" title="All 2 branches covered.">        } else if( size == config.bufferMediumSize) {</span>
+<span class="fc" id="L78">            poolSize = config.bufferMediumPoolSize;</span>
+<span class="pc bpc" id="L79" title="1 of 2 branches missed.">        } else if( size == config.bufferLargePoolSize) {</span>
+<span class="nc" id="L80">            poolSize = config.bufferLargePoolSize;</span>
+        }
+<span class="fc" id="L82">        return poolSize;</span>
+    }
+
+    int getSmallSize() {
+<span class="fc" id="L86">        return config.bufferSmallSize;</span>
+    }
+
+    static ResourcePool initialize(ConnectionConfig&lt;?&gt; config) {
+<span class="fc" id="L90">        return new ResourcePool(config);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.5.201910111838</span></div></body></html>

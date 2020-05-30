@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.andyalvarezdev.mmocore.ReadHandlerTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2020-05-30T23:53:02" hostname="DESKTOP-PCBHA14" time="4.525">
+  <properties/>
+  <testcase name="testCompletedDiconnected" classname="io.github.andyalvarezdev.mmocore.ReadHandlerTest" time="2.106"/>
+  <testcase name="testTwoPacketOnce" classname="io.github.andyalvarezdev.mmocore.ReadHandlerTest" time="0.105"/>
+  <testcase name="testCompletedWithoutEnoughData" classname="io.github.andyalvarezdev.mmocore.ReadHandlerTest" time="0.105"/>
+  <testcase name="testFailed" classname="io.github.andyalvarezdev.mmocore.ReadHandlerTest" time="2.104"/>
+  <testcase name="testCompletedWithoutData" classname="io.github.andyalvarezdev.mmocore.ReadHandlerTest" time="0.104"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

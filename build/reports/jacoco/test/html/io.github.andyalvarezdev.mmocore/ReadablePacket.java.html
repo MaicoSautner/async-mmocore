@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ReadablePacket.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Mmocore async 3.1.0</a> &gt; <a href="index.source.html" class="el_package">io.github.andyalvarezdev.mmocore</a> &gt; <span class="el_source">ReadablePacket.java</span></div><h1>ReadablePacket.java</h1><pre class="source lang-java linenums">package io.github.andyalvarezdev.mmocore;
+
+import java.nio.charset.StandardCharsets;
+
+import static java.lang.Byte.toUnsignedInt;
+import static java.lang.Byte.toUnsignedLong;
+import static java.lang.Double.longBitsToDouble;
+import static java.lang.Float.intBitsToFloat;
+
+/**
+ * This class represents a Packet received from the client.
+ *
+ * All data received must have a header with 2 bytes and an optional payload.
+ *
+ * The first and second bytes is a 16 bits integer holding the size of the packet.
+ */
+public abstract class ReadablePacket&lt;T extends Client&lt;Connection&lt;T&gt;&gt;&gt; implements Runnable {
+
+    private PacketBuffer buffer;
+    protected T client;
+
+<span class="fc" id="L22">    protected ReadablePacket() {</span>
+        // no direct instances
+<span class="fc" id="L24">    }</span>
+
+    void init(T client, PacketBuffer buffer) {
+<span class="fc" id="L27">        this.client = client;</span>
+<span class="fc" id="L28">        this.buffer = buffer;</span>
+<span class="fc" id="L29">    }</span>
+
+    /**
+     *
+     * @return the available data to be read
+     */
+    protected final int available() {
+<span class="fc" id="L36">        return buffer.data.length - buffer.index;</span>
+    }
+
+    /**
+     *
+     * Reads as many bytes as the length of the array.
+     * @param dst : the byte array which will be filled with the data.
+     */
+    protected final void readBytes(final byte[] dst) {
+<span class="fc" id="L45">        readBytes(dst,0, dst.length);</span>
+<span class="fc" id="L46">    }</span>
+
+    /**
+     *
+     * Reads as many bytes as the given length (len). Starts to fill the
+     * byte array from the given offset to &lt;B&gt;offset&lt;/B&gt; + &lt;B&gt;len&lt;/B&gt;.
+     * @param dst : the byte array which will be filled with the data.
+     * @param offset : starts to fill the byte array from the given offset.
+     * @param length : the given length of bytes to be read.
+     */
+    protected final void readBytes(final byte[] dst, final int offset, final int length) {
+<span class="fc" id="L57">        System.arraycopy(buffer.data, buffer.index, dst, offset, length);</span>
+<span class="fc" id="L58">        buffer.index += length;</span>
+<span class="fc" id="L59">    }</span>
+
+    /**
+     * Reads raw &lt;B&gt;byte&lt;/B&gt; from the buffer
+     * @return byte read
+     */
+    protected final byte readByte() {
+<span class="fc" id="L66">        return buffer.data[buffer.index++];</span>
+    }
+
+    /**
+     * Reads &lt;B&gt;byte&lt;/B&gt; from the buffer
+     * @return true if byte is not equal 0
+     */
+    protected final boolean readBoolean() {
+<span class="fc bfc" id="L74" title="All 2 branches covered.">        return readByte() != 0;</span>
+    }
+
+    /**
+     *  Reads &lt;B&gt;char&lt;/B&gt; from the buffer
+     * @return char read
+     */
+    protected final char readChar() {
+<span class="fc" id="L82">        return (char) readShort();</span>
+    }
+
+    /**
+     * Reads &lt;B&gt;byte&lt;/B&gt; from the buffer. &lt;BR&gt;
+     * 8bit integer (00)
+     * @return unsigned int read
+     */
+    protected final int readUnsignedByte() {
+<span class="fc" id="L91">        return toUnsignedInt(buffer.data[buffer.index++]);</span>
+    }
+
+    /**
+     * Reads &lt;B&gt;short&lt;/B&gt; from the buffer. &lt;BR&gt;
+     * 16bit integer (00 00)
+     * @return short read
+     */
+    protected final short readShort()  {
+<span class="fc" id="L100">        return (short) (readUnsignedByte() |</span>
+<span class="fc" id="L101">                        readUnsignedByte() &lt;&lt; 8);</span>
+    }
+
+    /**
+     * Reads &lt;B&gt;short&lt;/B&gt; from the buffer. &lt;BR&gt;
+     * 16bit integer (00 00)
+     * @return  true if the short is not equals 0
+     */
+    protected final boolean readShortAsBoolean()  {
+<span class="fc bfc" id="L110" title="All 2 branches covered.">        return readShort() != 0;</span>
+    }
+
+    /**
+     * Reads &lt;B&gt;float&lt;/B&gt; from the buffer. &lt;BR&gt;
+     * 32bit precision float (00 00 00 00)
+     * @return float read
+     */
+    protected final float readFloat() {
+<span class="fc" id="L119">        return intBitsToFloat(readInt());</span>
+    }
+
+    /**
+     * Reads &lt;B&gt;int&lt;/B&gt; from the buffer. &lt;BR&gt;
+     * 32bit integer (00 00 00 00)
+     * @return int read
+     */
+    protected final int readInt() {
+<span class="fc" id="L128">        return readUnsignedByte()  |</span>
+<span class="fc" id="L129">                readUnsignedByte() &lt;&lt; 8  |</span>
+<span class="fc" id="L130">                readUnsignedByte() &lt;&lt; 16 |</span>
+<span class="fc" id="L131">                readUnsignedByte() &lt;&lt; 24 ;</span>
+
+    }
+
+    /**
+     * Reads &lt;B&gt;int&lt;/B&gt; from the buffer. &lt;BR&gt;
+     * 32bit integer (00 00 00 00)
+     * @return true if int is not equals 0
+     */
+    protected final boolean readIntAsBoolean() {
+<span class="fc bfc" id="L141" title="All 2 branches covered.">        return readInt() != 0;</span>
+    }
+
+    /**
+     * Reads &lt;B&gt;long&lt;/B&gt; from the buffer. &lt;BR&gt;
+     * 64bit integer (00 00 00 00 00 00 00 00)
+     * @return long read
+     */
+    protected final long readLong() {
+<span class="fc" id="L150">        return toUnsignedLong(readByte())  |</span>
+<span class="fc" id="L151">                toUnsignedLong(readByte()) &lt;&lt;  8  |</span>
+<span class="fc" id="L152">                toUnsignedLong(readByte()) &lt;&lt; 16 |</span>
+<span class="fc" id="L153">                toUnsignedLong(readByte()) &lt;&lt; 24 |</span>
+<span class="fc" id="L154">                toUnsignedLong(readByte()) &lt;&lt; 32 |</span>
+<span class="fc" id="L155">                toUnsignedLong(readByte()) &lt;&lt; 40 |</span>
+<span class="fc" id="L156">                toUnsignedLong(readByte()) &lt;&lt; 48 |</span>
+<span class="fc" id="L157">                toUnsignedLong(readByte()) &lt;&lt; 56;</span>
+    }
+
+    /**
+     * Reads &lt;B&gt;double&lt;/B&gt; from the buffer. &lt;BR&gt;
+     * 64bit double precision float (00 00 00 00 00 00 00 00)
+     * @return double read
+     */
+    protected final double readDouble() {
+<span class="fc" id="L166">        return longBitsToDouble(readLong());</span>
+    }
+
+    /**
+     * Reads &lt;B&gt;String&lt;/B&gt; from the buffer.
+     * @return String read
+     */
+    protected final String readString()  {
+<span class="fc" id="L174">        StringBuilder builder = new StringBuilder();</span>
+        char c;
+<span class="fc bfc" id="L176" title="All 2 branches covered.">        while((c = readChar()) != '\000') {</span>
+<span class="fc" id="L177">            builder.append(c);</span>
+        }
+<span class="fc" id="L179">        return builder.toString();</span>
+    }
+
+    /**
+     * Reads a predefined length &lt;B&gt;String&lt;/B&gt; from the buffer.
+     * @return String read
+     */
+    protected final String readSizedString() {
+<span class="fc" id="L187">        int size = readShort() * 2;</span>
+<span class="fc" id="L188">        byte[] data = new byte[size];</span>
+<span class="fc" id="L189">        readBytes(data);</span>
+<span class="fc" id="L190">        return new String(data, 0, size, StandardCharsets.UTF_16LE);</span>
+    }
+
+    public T getClient() {
+<span class="fc" id="L194">        return client;</span>
+    }
+
+    protected abstract boolean read();
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.5.201910111838</span></div></body></html>

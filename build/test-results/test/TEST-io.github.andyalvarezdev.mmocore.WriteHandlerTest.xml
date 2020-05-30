@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.andyalvarezdev.mmocore.WriteHandlerTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2020-05-30T23:53:06" hostname="DESKTOP-PCBHA14" time="6.317">
+  <properties/>
+  <testcase name="testCompletedWithNegative" classname="io.github.andyalvarezdev.mmocore.WriteHandlerTest" time="2.106"/>
+  <testcase name="testCompleted" classname="io.github.andyalvarezdev.mmocore.WriteHandlerTest" time="2.105"/>
+  <testcase name="testFailed" classname="io.github.andyalvarezdev.mmocore.WriteHandlerTest" time="2.106"/>
+  <system-out><![CDATA[Sending AsyncClientPingPacket
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

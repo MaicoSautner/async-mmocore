@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>WritablePacket.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Mmocore async 3.1.0</a> &gt; <a href="index.source.html" class="el_package">io.github.andyalvarezdev.mmocore</a> &gt; <span class="el_source">WritablePacket.java</span></div><h1>WritablePacket.java</h1><pre class="source lang-java linenums">package io.github.andyalvarezdev.mmocore;
+
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+import static java.lang.Double.doubleToRawLongBits;
+import static java.lang.Math.max;
+import static java.util.Objects.isNull;
+import static java.util.Objects.nonNull;
+
+/**
+ * This class represents a Packet that can be sent to clients.
+ *
+ * All data sent must have a header with 2 bytes and an optional payload.
+ *
+ * The first and second bytes is a 16 bits integer holding the size of the packet.
+ */
+public abstract class WritablePacket&lt;T extends Client&lt;Connection&lt;T&gt;&gt;&gt; {
+
+<span class="fc" id="L22">    private static final Map&lt;Class&lt;?&gt;, Integer&gt; packetInfo = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="fc" id="L23">    private static final ThreadLocal&lt;PacketBuffer&gt; THREAD_LOCAL = new ThreadLocal&lt;&gt;();</span>
+
+    private byte[] staticData;
+
+
+<span class="fc" id="L28">    protected WritablePacket() { }</span>
+
+
+    /**
+     * Write &lt;B&gt;byte[]&lt;/B&gt; to the buffer. &lt;BR&gt;
+     * 8bit integer array (00 ...)
+     * @param bytes to be written
+     */
+    protected final void writeBytes(final byte... bytes) {
+<span class="pc bpc" id="L37" title="1 of 2 branches missed.">        if(isNull(bytes)) {</span>
+<span class="nc" id="L38">            return;</span>
+        }
+<span class="fc" id="L40">        PacketBuffer buffer  = THREAD_LOCAL.get();</span>
+<span class="fc" id="L41">        ensureSize(buffer, bytes.length);</span>
+
+<span class="fc" id="L43">        System.arraycopy(bytes, 0, buffer.data, buffer.index, bytes.length);</span>
+<span class="fc" id="L44">        buffer.index += bytes.length;</span>
+<span class="fc" id="L45">    }</span>
+
+    private void ensureSize(PacketBuffer buffer, int size) {
+<span class="fc bfc" id="L48" title="All 2 branches covered.">        if(buffer.data.length &lt; buffer.index + size) {</span>
+<span class="fc" id="L49">            buffer.data = Arrays.copyOf(buffer.data, (int) ((buffer.data.length + size) * 1.2));</span>
+        }
+<span class="fc" id="L51">    }</span>
+
+    /**
+     * Write a&lt;B&gt;byte&lt;/B&gt; to the buffer. &lt;BR&gt;
+     * 8bit integer (00)
+     *
+     * If the underlying data array can't hold a new byte its size is increased 20%
+     *
+     * @param value to be written
+     */
+    protected final void writeByte(final byte value) {
+<span class="fc" id="L62">        PacketBuffer buffer = THREAD_LOCAL.get();</span>
+<span class="fc" id="L63">        ensureSize(buffer, 1);</span>
+<span class="fc" id="L64">        buffer.data[buffer.index++] = value;</span>
+<span class="fc" id="L65">    }</span>
+
+    /**
+     * Write a int to the buffer, the int is casted to a byte;
+     *
+     * @param value to be written
+     */
+    protected final void writeByte(final int value) {
+<span class="fc" id="L73">        writeByte((byte) value);</span>
+<span class="fc" id="L74">    }</span>
+
+    /**
+     * Write &lt;B&gt;boolean&lt;/B&gt; to the buffer. &lt;BR&gt;
+     *  If the value is true so write a &lt;B&gt;byte&lt;/B&gt; with value 1, otherwise 0
+     *  8bit integer (00)
+     * @param value to be written
+     */
+    protected final void writeByte(final boolean value) {
+<span class="fc bfc" id="L83" title="All 2 branches covered.">        writeByte((byte) (value ? 0x01 : 0x00));</span>
+<span class="fc" id="L84">    }</span>
+
+    /**
+     * Write &lt;B&gt;double&lt;/B&gt; to the buffer. &lt;BR&gt;
+     * 64bit double precision float (00 00 00 00 00 00 00 00)
+     * @param value to be written
+     */
+    protected final void writeDouble(final double value) {
+<span class="fc" id="L92">        long x = doubleToRawLongBits(value);</span>
+<span class="fc" id="L93">        writeLong(x);</span>
+<span class="fc" id="L94">    }</span>
+
+    /**
+     * Write &lt;B&gt;short&lt;/B&gt; to the buffer. &lt;BR&gt;
+     * 16bit integer (00 00)
+     * @param value to be written
+     */
+    protected final void writeShort(final int value) {
+<span class="fc" id="L102">        writeBytes((byte)  value,</span>
+                   (byte) (value &gt;&gt;&gt; 8));
+<span class="fc" id="L104">    }</span>
+
+    /**
+     * Write &lt;B&gt;boolean&lt;/B&gt; to the buffer. &lt;BR&gt;
+     * If the value is true so write a &lt;B&gt;byte&lt;/B&gt; with value 1, otherwise 0
+     *  16bit integer (00 00)
+     * @param value to be written
+     */
+    protected final void writeShort(final boolean value) {
+<span class="fc bfc" id="L113" title="All 2 branches covered.">        writeShort(value ? 0x01 : 0x00);</span>
+<span class="fc" id="L114">    }</span>
+
+    /**
+     * Write &lt;B&gt;int&lt;/B&gt; to the buffer. &lt;BR&gt;
+     * 32bit integer (00 00 00 00)
+     * @param value to be written
+     */
+    protected final void writeInt(final int value) {
+<span class="fc" id="L122">        writeBytes((byte)  value,</span>
+                   (byte) (value &gt;&gt;&gt; 8),
+                   (byte) (value &gt;&gt;&gt; 16),
+                   (byte) (value &gt;&gt;&gt; 24));
+<span class="fc" id="L126">    }</span>
+
+    /**
+     * Write &lt;B&gt;boolean&lt;/B&gt; to the buffer. &lt;BR&gt;
+     * If the value is true so write a &lt;B&gt;byte&lt;/B&gt; with value 1, otherwise 0
+     *  32bit integer (00 00 00 00)
+     * @param value to be written
+     */
+    protected final void writeInt(final boolean value) {
+<span class="fc bfc" id="L135" title="All 2 branches covered.">        writeInt(value ? 0x01 : 0x00);</span>
+<span class="fc" id="L136">    }</span>
+
+
+    /**
+     * Write &lt;B&gt;float&lt;/B&gt; to the buffer. &lt;BR&gt;
+     *  32bit float point number (00 00 00 00)
+     * @param value to be written
+     */
+    protected final void writeFloat(final float value) {
+<span class="fc" id="L145">        int x  = Float.floatToRawIntBits(value);</span>
+<span class="fc" id="L146">        writeInt(x);</span>
+<span class="fc" id="L147">    }</span>
+
+    /**
+     * Write &lt;B&gt;long&lt;/B&gt; to the buffer. &lt;BR&gt;
+     * 64bit integer (00 00 00 00 00 00 00 00)
+     * @param value to be written
+     */
+    protected final void writeLong(final long value) {
+<span class="fc" id="L155">        writeBytes((byte) value,</span>
+                (byte) (value &gt;&gt;&gt; 8),
+                (byte) (value &gt;&gt;&gt; 16),
+                (byte) (value &gt;&gt;&gt; 24),
+                (byte) (value &gt;&gt;&gt; 32),
+                (byte) (value &gt;&gt;&gt; 40),
+                (byte) (value &gt;&gt;&gt; 48),
+                (byte) (value &gt;&gt;&gt; 56));
+<span class="fc" id="L163">    }</span>
+
+    /**
+     * Write &lt;B&gt;char&lt;/B&gt; to the buffer.&lt;BR&gt;
+     * 16 bit char
+     *
+     * @param value the char to be put on data.
+     */
+    protected  final void writeChar(final char value) {
+<span class="fc" id="L172">        writeBytes((byte) value, (byte) (value &gt;&gt;&gt; 8));</span>
+<span class="fc" id="L173">    }</span>
+
+    /**
+     * Write a &lt;B&gt;String&lt;/B&gt; to the buffer with a null termination (\000).
+     * Each character is a 16bit char
+     *
+     * @param text to be written
+     */
+    protected final void writeString(final CharSequence text) {
+<span class="fc bfc" id="L182" title="All 2 branches covered.">        if(isNull(text)) {</span>
+<span class="fc" id="L183">            writeChar('\000');</span>
+<span class="fc" id="L184">            return;</span>
+        }
+<span class="fc" id="L186">        writeStringWithCharset(text);</span>
+<span class="fc" id="L187">        writeChar('\000');</span>
+<span class="fc" id="L188">    }</span>
+
+    private void writeStringWithCharset(CharSequence text) {
+<span class="fc" id="L191">        writeBytes(text.toString().getBytes(StandardCharsets.UTF_16LE));</span>
+<span class="fc" id="L192">    }</span>
+
+    /**
+     * Write &lt;B&gt;String&lt;/B&gt; to the buffer preceded by a &lt;B&gt;short&lt;/B&gt; 16 bit with String length and no null termination.
+     * Each character is a 16bit char.
+     *
+     * @param text to be written
+     */
+    protected final void writeSizedString(final CharSequence text) {
+<span class="pc bpc" id="L201" title="1 of 4 branches missed.">        if(nonNull(text) &amp;&amp; text.length() &gt; 0) {</span>
+<span class="fc" id="L202">            writeShort(text.length());</span>
+<span class="fc" id="L203">            writeStringWithCharset(text);</span>
+        } else {
+<span class="fc" id="L205">            writeShort(0);</span>
+        }
+<span class="fc" id="L207">    }</span>
+
+    int writeData(T client) {
+<span class="pc bpc" id="L210" title="1 of 2 branches missed.">        if(hasWritedStaticData()) {</span>
+<span class="nc" id="L211">            THREAD_LOCAL.set(PacketBuffer.of(Arrays.copyOf(staticData, staticData.length), staticData.length));</span>
+<span class="nc" id="L212">            return staticData.length;</span>
+        }
+
+<span class="fc" id="L215">        THREAD_LOCAL.set(PacketBuffer.of( packetInfo.getOrDefault(getClass(), client.getResourcePool().getSmallSize())));</span>
+
+<span class="fc bfc" id="L217" title="All 2 branches covered.">        if(write(client)) {</span>
+<span class="fc" id="L218">            PacketBuffer buffer = THREAD_LOCAL.get();</span>
+<span class="fc bfc" id="L219" title="All 2 branches covered.">            if(getClass().isAnnotationPresent(StaticPacket.class)) {</span>
+<span class="fc" id="L220">                staticData = Arrays.copyOf(buffer.data, buffer.index);</span>
+            }
+<span class="fc" id="L222">            return buffer.index;</span>
+        }
+<span class="fc" id="L224">        return 0;</span>
+    }
+
+    void writeHeaderAndRecord(int header) {
+<span class="fc" id="L228">        PacketBuffer buffer = THREAD_LOCAL.get();</span>
+<span class="fc" id="L229">        short size =  (short) header;</span>
+<span class="fc" id="L230">        buffer.data[0] = (byte) size;</span>
+<span class="fc" id="L231">        buffer.data[1] = (byte) (size &gt;&gt;&gt; 8);</span>
+
+<span class="fc bfc" id="L233" title="All 2 branches covered.">        packetInfo.compute(getClass(), (k, v) -&gt; isNull(v) ? header : max(v, header));</span>
+<span class="fc" id="L234">    }</span>
+
+    private boolean hasWritedStaticData() {
+<span class="pc bpc" id="L237" title="1 of 4 branches missed.">        return getClass().isAnnotationPresent(StaticPacket.class) &amp;&amp; nonNull(staticData);</span>
+    }
+
+    PacketBuffer buffer() {
+<span class="fc" id="L241">        return THREAD_LOCAL.get();</span>
+    }
+
+    void releaseData() {
+<span class="fc" id="L245">        THREAD_LOCAL.remove();</span>
+<span class="fc" id="L246">    }</span>
+
+    @Override
+    public String toString() {
+<span class="fc" id="L250">        return getClass().getSimpleName();</span>
+    }
+
+    /**
+     * Writes the data to the client
+     *
+     * @return the packet was written successful
+     * @param client client to send data
+     */
+    protected abstract boolean write(T client);
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.5.201910111838</span></div></body></html>

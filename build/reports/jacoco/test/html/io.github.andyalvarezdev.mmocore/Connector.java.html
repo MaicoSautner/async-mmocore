@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Connector.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Mmocore async 3.1.0</a> &gt; <a href="index.source.html" class="el_package">io.github.andyalvarezdev.mmocore</a> &gt; <span class="el_source">Connector.java</span></div><h1>Connector.java</h1><pre class="source lang-java linenums">package io.github.andyalvarezdev.mmocore;
+
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.nio.channels.AsynchronousChannelGroup;
+import java.nio.channels.AsynchronousSocketChannel;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
+
+import static java.util.Objects.isNull;
+
+<span class="fc" id="L12">public class Connector&lt;T extends Client&lt;Connection&lt;T&gt;&gt;&gt;  {</span>
+
+    private ConnectionConfig&lt;T&gt; config;
+    private static final int THREAD_POOL_SIZE = 2;
+
+    /**
+     * Creates a Connector holding the minimum requirements to create a Client.
+     *
+     * @param clientFactory - The factory responsible to create a new Client when a new connection is accepted.
+     * @param packetHandler  - The handle responsible to convert the data received into a {@link ReadablePacket}
+     * @param executor - The responsible to execute the incoming packets.
+     * @param &lt;T&gt; - The Type of client that ConnectionBuilder will handle.
+     *
+     * @return A ConnectionBuilder with default configuration.
+     *
+     */
+    public static &lt;T extends Client&lt;Connection&lt;T&gt;&gt;&gt; Connector&lt;T&gt; create(ClientFactory&lt;T&gt; clientFactory, PacketHandler&lt;T&gt; packetHandler, PacketExecutor&lt;T&gt; executor)  {
+<span class="fc" id="L29">        Connector&lt;T&gt; builder = new Connector&lt;&gt;();</span>
+<span class="fc" id="L30">        builder.config = new ConnectionConfig&lt;&gt;(null, clientFactory, new ReadHandler&lt;&gt;(packetHandler, executor));</span>
+<span class="fc" id="L31">        return builder;</span>
+    }
+
+    /**
+     * Sets the size limit of the data buffer sent/received. The size must be as bigger as the biggest packet received.
+     *
+     * The default value is 8KB.
+     *
+     * @param bufferSize - the buffer size to be set
+     *
+     * @return this.
+     */
+    public Connector&lt;T&gt; bufferDefaultSize(int bufferSize) {
+<span class="fc" id="L44">        config.bufferDefaultSize = bufferSize;</span>
+<span class="fc" id="L45">        return this;</span>
+    }
+
+    /**
+     * Sets the small size of the data buffer sent/received.
+     *
+     * The default value is 1KB.
+     *
+     * @param bufferSize - the buffer size to be set
+     *
+     * @return this.
+     */
+    public Connector&lt;T&gt; bufferSmallSize(int bufferSize) {
+<span class="fc" id="L58">        config.bufferSmallSize = bufferSize;</span>
+<span class="fc" id="L59">        return this;</span>
+    }
+
+    /**
+     * Sets the medium size of the data buffer sent/received.
+     *
+     * The default value is 2KB.
+     *
+     * @param bufferSize - the buffer size to be set
+     *
+     * @return this.
+     */
+    public Connector&lt;T&gt; bufferMediumSize(int bufferSize) {
+<span class="fc" id="L72">        config.bufferMediumSize = bufferSize;</span>
+<span class="fc" id="L73">        return this;</span>
+    }
+
+    /**
+     * Sets the large size of the data buffer sent/received.
+     *
+     * The default value is 4KB.
+     *
+     * @param bufferSize - the buffer size to be set
+     *
+     * @return this.
+     */
+    public Connector&lt;T&gt; bufferLargeSize(int bufferSize) {
+<span class="fc" id="L86">        config.bufferLargeSize = bufferSize;</span>
+<span class="fc" id="L87">        return this;</span>
+    }
+
+    /**
+     * Sets the maximum amount of buffer with default size that can be holder on the BufferPool.
+     * A small value can be lead to buffer overhead creation.
+     * Otherwise a too big size can be lead to unwanted memory usage.
+     *
+     * The size must be restricted related to the number of expected clients and taking considerations of system resources.
+     *
+     * The default value is 100.
+     *
+     * @param bufferPoolSize - the size of the buffer pool size.
+     *
+     * @return this
+     */
+    public Connector&lt;T&gt; bufferPoolSize(int bufferPoolSize) {
+<span class="fc" id="L104">        config.bufferPoolSize = bufferPoolSize;</span>
+<span class="fc" id="L105">        return this;</span>
+    }
+
+    /**
+     * Sets the maximum amount of buffer with small size that can be holder on the BufferPool.
+     * A small value can be lead to buffer overhead creation.
+     * Otherwise a too big size can be lead to unwanted memory usage.
+     *
+     * The size must be restricted related to the number of expected clients and taking considerations of system resources.
+     *
+     * The default value is 100.
+     *
+     * @param bufferPoolSize - the size of the buffer pool size.
+     *
+     * @return this
+     */
+    public Connector&lt;T&gt; bufferSmallPoolSize(int bufferPoolSize) {
+<span class="fc" id="L122">        config.bufferSmallPoolSize = bufferPoolSize;</span>
+<span class="fc" id="L123">        return this;</span>
+    }
+
+    /**
+     * Sets the maximum amount of buffer with medium size that can be holder on the BufferPool.
+     * A small value can be lead to buffer overhead creation.
+     * Otherwise a too big size can be lead to unwanted memory usage.
+     *
+     * The size must be restricted related to the number of expected clients and taking considerations of system resources.
+     *
+     * The default value is 50.
+     *
+     * @param bufferPoolSize - the size of the buffer pool size.
+     *
+     * @return this
+     */
+    public Connector&lt;T&gt; bufferMediumPoolSize(int bufferPoolSize) {
+<span class="fc" id="L140">        config.bufferMediumPoolSize = bufferPoolSize;</span>
+<span class="fc" id="L141">        return this;</span>
+    }
+
+    /**
+     * Sets the maximum amount of buffer with large size that can be holder on the BufferPool.
+     * A small value can be lead to buffer overhead creation.
+     * Otherwise a too big size can be lead to unwanted memory usage.
+     *
+     * The size must be restricted related to the number of expected clients and taking considerations of system resources.
+     *
+     * The default value is 25.
+     *
+     * @param bufferPoolSize - the size of the buffer pool size.
+     *
+     * @return this
+     */
+    public Connector&lt;T&gt; bufferLargePoolSize(int bufferPoolSize) {
+<span class="fc" id="L158">        config.bufferLargePoolSize = bufferPoolSize;</span>
+<span class="fc" id="L159">        return this;</span>
+    }
+
+    /**
+     * Connects to a host using the address and port.
+     *
+     * @param host the address to be connected to
+     * @param port the port of the host
+     *
+     * @return A client connected to the host and port
+     *
+     * @throws IOException if a IO error happens during the connection.
+     * @throws ExecutionException  if the computation threw an exception
+     * @throws InterruptedException if the current thread was interrupted while waiting
+     */
+    public T connect(String host, int port) throws IOException, ExecutionException, InterruptedException {
+        InetSocketAddress socketAddress;
+<span class="pc bpc" id="L176" title="2 of 4 branches missed.">        if(isNull(host) || host.isEmpty()) {</span>
+<span class="nc" id="L177">            socketAddress = new InetSocketAddress(port);</span>
+        } else {
+<span class="fc" id="L179">            socketAddress = new InetSocketAddress(host, port);</span>
+        }
+<span class="fc" id="L181">        return connect(socketAddress);</span>
+    }
+
+    /**
+     * Connects to a host with socketAddress
+     *
+     * @param socketAddress the address which will be connected
+     *
+     * @return a client that represents the connection with the socketAddress
+     *
+     * @throws IOException if a IO error happens during the connection.
+     * @throws ExecutionException  if the computation threw an exception
+     * @throws InterruptedException if the current thread was interrupted while waiting
+     */
+    public T connect(InetSocketAddress socketAddress) throws IOException, ExecutionException, InterruptedException {
+<span class="fc" id="L196">        AsynchronousChannelGroup group = AsynchronousChannelGroup.withFixedThreadPool(THREAD_POOL_SIZE, Executors.defaultThreadFactory());</span>
+<span class="fc" id="L197">        AsynchronousSocketChannel channel = group.provider().openAsynchronousSocketChannel(group);</span>
+<span class="fc" id="L198">        channel.connect(socketAddress).get();</span>
+<span class="fc" id="L199">        Connection&lt;T&gt; connection = new Connection&lt;&gt;(channel, config.readHandler, new WriteHandler&lt;&gt;());</span>
+<span class="fc" id="L200">        T client = config.clientFactory.create(connection);</span>
+<span class="fc" id="L201">        client.setResourcePool(ResourcePool.initialize(config));</span>
+<span class="fc" id="L202">        connection.setClient(client);</span>
+<span class="fc" id="L203">        connection.read();</span>
+<span class="fc" id="L204">        client.onConnected();</span>
+<span class="fc" id="L205">        return client;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.5.201910111838</span></div></body></html>

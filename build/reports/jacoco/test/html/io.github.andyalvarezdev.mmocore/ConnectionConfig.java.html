@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ConnectionConfig.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Mmocore async 3.1.0</a> &gt; <a href="index.source.html" class="el_package">io.github.andyalvarezdev.mmocore</a> &gt; <span class="el_source">ConnectionConfig.java</span></div><h1>ConnectionConfig.java</h1><pre class="source lang-java linenums">package io.github.andyalvarezdev.mmocore;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.SocketAddress;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Properties;
+
+import static java.lang.Math.max;
+import static java.lang.Runtime.getRuntime;
+import static java.util.Objects.nonNull;
+
+class ConnectionConfig&lt;T extends Client&lt;Connection&lt;T&gt;&gt;&gt; {
+
+<span class="fc" id="L17">    int bufferDefaultSize = 8 * 1024;</span>
+<span class="fc" id="L18">    int bufferSmallSize = 1024;</span>
+<span class="fc" id="L19">    int bufferMediumSize = 2 * 1024;</span>
+<span class="fc" id="L20">    int bufferLargeSize = 4 * 1024;</span>
+<span class="fc" id="L21">    int bufferPoolSize = 100;</span>
+<span class="fc" id="L22">    int bufferSmallPoolSize = 100;</span>
+<span class="fc" id="L23">    int bufferMediumPoolSize = 50;</span>
+<span class="fc" id="L24">    int bufferLargePoolSize = 25;</span>
+<span class="fc" id="L25">    long shutdownWaitTime = 5000;</span>
+    int threadPoolSize;
+    boolean useNagle;
+
+    ClientFactory&lt;T&gt; clientFactory;
+    ConnectionFilter acceptFilter;
+    ReadHandler&lt;T&gt; readHandler;
+    WriteHandler&lt;T&gt; writeHandler;
+    SocketAddress address;
+
+<span class="fc" id="L35">    ConnectionConfig(SocketAddress address, ClientFactory&lt;T&gt; factory, ReadHandler&lt;T&gt; readHandler) {</span>
+<span class="fc" id="L36">        this.address = address;</span>
+<span class="fc" id="L37">        this.clientFactory = factory;</span>
+<span class="fc" id="L38">        this.readHandler = readHandler;</span>
+<span class="fc" id="L39">        this.writeHandler = new WriteHandler&lt;&gt;();</span>
+<span class="fc" id="L40">        threadPoolSize = max(1, getRuntime().availableProcessors() - 2);</span>
+
+<span class="fc" id="L42">        String systemProperty = System.getProperty(&quot;async-mmocore.configurationFile&quot;);</span>
+<span class="fc bfc" id="L43" title="All 4 branches covered.">        if(nonNull(systemProperty) &amp;&amp; !systemProperty.trim().isEmpty()) {</span>
+<span class="fc" id="L44">            loadProperties(systemProperty);</span>
+        }
+<span class="fc" id="L46">    }</span>
+
+    private void loadProperties(String propertyFileName) {
+<span class="fc" id="L49">        final Path path = Paths.get(propertyFileName);</span>
+
+<span class="pc bpc" id="L51" title="1 of 2 branches missed.">        try(final InputStream inputStream = Files.isRegularFile(path) ? Files.newInputStream(path) : getClass().getResourceAsStream(propertyFileName)) {</span>
+<span class="fc bfc" id="L52" title="All 2 branches covered.">            if(nonNull(inputStream)) {</span>
+<span class="fc" id="L53">                Properties properties = new Properties();</span>
+<span class="fc" id="L54">                properties.load(inputStream);</span>
+<span class="fc" id="L55">                configure(properties);</span>
+<span class="fc" id="L56">            } else {</span>
+<span class="fc" id="L57">                throw new IllegalArgumentException(&quot;Cannot find property file: &quot; + propertyFileName);</span>
+            }
+<span class="nc" id="L59">        } catch (IOException e) {</span>
+<span class="nc" id="L60">            throw new IllegalArgumentException(&quot;Failed to read property file&quot;, e);</span>
+<span class="fc" id="L61">        }</span>
+<span class="fc" id="L62">    }</span>
+
+    private void configure(Properties properties) {
+<span class="fc" id="L65">        bufferDefaultSize = parseInt(properties, &quot;bufferDefaultSize&quot;,  8 * 1024);</span>
+<span class="fc" id="L66">        bufferSmallSize = parseInt(properties, &quot;bufferSmallSize&quot;, 1024);</span>
+<span class="fc" id="L67">        bufferMediumSize = parseInt(properties, &quot;bufferMediumSize&quot;, 2 * 1024);</span>
+<span class="fc" id="L68">        bufferLargeSize = parseInt(properties, &quot;bufferLargeSize&quot;, 4 * 1024);</span>
+<span class="fc" id="L69">        bufferPoolSize = parseInt(properties, &quot;bufferPoolSize&quot;, 100);</span>
+<span class="fc" id="L70">        bufferSmallPoolSize = parseInt(properties, &quot;bufferSmallPoolSize&quot;, 100);</span>
+<span class="fc" id="L71">        bufferMediumPoolSize = parseInt(properties, &quot;bufferMediumPoolSize&quot;, 50);</span>
+<span class="fc" id="L72">        bufferLargePoolSize = parseInt(properties, &quot;bufferLargePoolSize&quot;, 25);</span>
+<span class="fc" id="L73">        shutdownWaitTime = parseInt(properties, &quot;shutdownWaitTime&quot;, 5) * 1000L;</span>
+<span class="fc" id="L74">        threadPoolSize = parseInt(properties, &quot;threadPoolSize&quot;, threadPoolSize);</span>
+<span class="fc" id="L75">    }</span>
+
+    private int parseInt(Properties properties, String propertyName, int defaultValue) {
+        try{
+<span class="fc" id="L79">            return Integer.parseInt(properties.getProperty(propertyName));</span>
+<span class="fc" id="L80">        } catch (Exception e) {</span>
+<span class="fc" id="L81">            return defaultValue;</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.5.201910111838</span></div></body></html>
